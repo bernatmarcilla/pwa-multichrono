@@ -1,82 +1,225 @@
+import { jsPDF } from 'jspdf';
 import { Chronometer } from '../types';
-import { formatTime } from './time';
+import { formatTime, formatDelta } from './time';
 
-function buildTextReport(
-  chronos: Chronometer[],
-  getDisplayElapsed: (c: Chronometer) => number,
-): string {
-  const lines: string[] = ['MultiChrono Export', '==================', ''];
-
-  for (const chrono of chronos) {
-    const elapsed = getDisplayElapsed(chrono);
-    lines.push(`${chrono.name}  —  ${formatTime(elapsed)}`);
-
-    if (chrono.laps.length > 0) {
-      lines.push('  Lap     Time       Δ          Total');
-      lines.push('  ------  ---------  ---------  ---------');
-      for (const lap of [...chrono.laps].reverse()) {
-        const lapStr = formatTime(lap.lapTime).padEnd(9);
-        const deltaStr = lap.number === 1 ? '—'.padEnd(9) : formatTime(Math.abs(lap.delta)).padEnd(9);
-        const accStr = formatTime(lap.accumulated);
-        lines.push(`  #${String(lap.number).padEnd(5)}  ${lapStr}  ${deltaStr}  ${accStr}`);
-      }
-    }
-    lines.push('');
+function getFastestSlowest(laps: Chronometer['laps']) {
+  if (laps.length < 2) {
+    return { fastest: -1, slowest: -1 };
   }
-  return lines.join('\n');
+
+  const fastest = laps.reduce(
+    (min, lap, i) => (lap.lapTime < laps[min].lapTime ? i : min),
+    0,
+  );
+
+  const slowest = laps.reduce(
+    (max, lap, i) => (lap.lapTime > laps[max].lapTime ? i : max),
+    0,
+  );
+
+  return { fastest, slowest };
 }
 
 export async function exportAndShare(
   chronos: Chronometer[],
   getDisplayElapsed: (c: Chronometer) => number,
 ): Promise<void> {
-  const text = buildTextReport(chronos, getDisplayElapsed);
-
-  // if (navigator.share) {
-  //   await navigator.share({ title: 'MultiChrono Export', text });
-  //   return;
-  // }
-
-  // Fallback: copy to clipboard
- const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>MultiChrono Export</title>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 40px; color: #1c1c1e; }
-            h1 { font-size: 24px; margin-bottom: 20px; color: #007AFF; border-bottom: 2px solid #F2F2F7; padding-bottom: 10px; }
-            pre { font-family: ui-monospace, SFMono-Regular, SF Pro Text, monospace; font-size: 14px; line-height: 1.6; white-space: pre-wrap; background: #F2F2F7; padding: 20px; border-radius: 8px; }
-            @media print {
-              body { padding: 0; }
-              pre { background: none; padding: 0; }
-            }
-          </style>
-        </head>
-        <body>
-          <h1>MultiChrono Report</h1>
-          <pre>${text}</pre>
-          <script>
-            // Automatically trigger the system print/PDF dialog, then close the tab
-            window.onload = function() {
-              window.print();
-              setTimeout(() => { window.close(); }, 500);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+  if (chronos.length === 0) {
     return;
   }
 
-  // Last resort: open in new window so user can print/save
-  const w = window.open('', '_blank');
-  if (w) {
-    w.document.write(`<pre style="font-family:monospace;padding:20px">${text}</pre>`);
-    w.document.close();
-    w.print();
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  const drawBackground = () => {
+    doc.setFillColor(242, 242, 247);
+    doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  };
+
+  drawBackground();
+
+  let y = 20;
+
+  // Title
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(26);
+  doc.setTextColor(0, 122, 255);
+  doc.text('MultiChrono', 20, y);
+
+  y += 8;
+
+  // Subtitle
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(142, 142, 147);
+  doc.text(
+    `Exported on ${new Date().toLocaleString()}`,
+    20,
+    y,
+  );
+
+  y += 12;
+
+  for (const chrono of chronos) {
+    const elapsed = getDisplayElapsed(chrono);
+
+    const cardHeight =
+      chrono.laps.length > 0
+        ? 28 + chrono.laps.length * 8
+        : 32;
+
+    if (y + cardHeight > pageHeight - 20) {
+      doc.addPage();
+      drawBackground();
+      y = 20;
+    }
+
+    // Card
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(
+      15,
+      y,
+      180,
+      cardHeight,
+      4,
+      4,
+      'F',
+    );
+
+    // Header
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(28, 28, 30);
+
+    doc.text(chrono.name, 22, y + 10);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(18);
+
+    doc.text(
+      formatTime(elapsed),
+      188,
+      y + 10,
+      { align: 'right' },
+    );
+
+    y += 18;
+
+    if (chrono.laps.length > 0) {
+      // Table header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(142, 142, 147);
+
+      doc.text('LAP', 22, y);
+      doc.text('TIME', 50, y);
+      doc.text('Δ DELTA', 95, y);
+      doc.text('TOTAL', 145, y);
+
+      y += 6;
+
+      const { fastest, slowest } =
+        getFastestSlowest(chrono.laps);
+
+      chrono.laps.forEach((lap, idx) => {
+        if (idx === fastest) {
+          doc.setFillColor(200, 245, 213);
+          doc.rect(18, y - 4.5, 170, 7, 'F');
+        } else if (idx === slowest) {
+          doc.setFillColor(255, 208, 206);
+          doc.rect(18, y - 4.5, 170, 7, 'F');
+        }
+
+        doc.setFont('courier', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(28, 28, 30);
+
+        doc.text(`#${lap.number}`, 22, y);
+
+        doc.text(
+          formatTime(lap.lapTime),
+          50,
+          y,
+        );
+
+        doc.text(
+          lap.number === 1
+            ? '—'
+            : formatDelta(lap.delta),
+          95,
+          y,
+        );
+
+        doc.text(
+          formatTime(lap.accumulated),
+          145,
+          y,
+        );
+
+        y += 8;
+      });
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(142, 142, 147);
+
+      doc.text(
+        'No laps recorded',
+        22,
+        y,
+      );
+
+      y += 10;
+    }
+
+    y += 10;
   }
+
+  // Footer
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(198, 198, 200);
+
+  doc.text(
+    'Generated by MultiChrono',
+    pageWidth / 2,
+    pageHeight - 10,
+    {
+      align: 'center',
+    },
+  );
+
+  const pdfBlob = doc.output('blob');
+
+  const pdfFile = new File(
+    [pdfBlob],
+    'multichrono-report.pdf',
+    {
+      type: 'application/pdf',
+    },
+  );
+
+  if (
+    navigator.canShare &&
+    navigator.canShare({ files: [pdfFile] })
+  ) {
+    try {
+      await navigator.share({
+        files: [pdfFile],
+        title: 'MultiChrono Results',
+        text: 'MultiChrono results',
+      });
+      return;
+    } catch (err) {
+      console.log('Share cancelled:', err);
+    }
+  }
+
+  doc.save('multichrono-report.pdf');
 }
