@@ -1,0 +1,57 @@
+:root {
+  --bg: #F2F2F7;
+  --card: #FFFFFF;
+  --surface: #EBEBF0;
+  --surface-alt: #F7F7FA;
+  --text-primary: #1C1C1E;
+  --text-secondary: #8E8E93;
+  --accent: #007AFF;
+  --green: #34C759;
+  --red: #FF3B30;
+  --yellow: #FFCC00;
+  --divider: #C6C6C8;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+html, body, #root {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  background: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input {
+  font-family: inherit;
+}
+
+/* Numeric font variant for timer digits */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}

@@ -1,0 +1,43 @@
+.container {
+  margin-top: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-alt);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: 4px 4px;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--divider);
+}
+
+.headerCell {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.lapNum {
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.lapTime {
+  flex: 1;
+}
+
+.delta {
+  width: 70px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.accumulated {
+  width: 68px;
+  text-align: right;
+  flex-shrink: 0;
+}
