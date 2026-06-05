@@ -73,3 +73,12 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+
+
+dist/
+.vscode/*
+!.vscode/extensions.json
+.env
+.env.local
+.env.*.local
