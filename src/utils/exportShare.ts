@@ -32,15 +32,43 @@ export async function exportAndShare(
 ): Promise<void> {
   const text = buildTextReport(chronos, getDisplayElapsed);
 
-  if (navigator.share) {
-    await navigator.share({ title: 'MultiChrono Export', text });
-    return;
-  }
+  // if (navigator.share) {
+  //   await navigator.share({ title: 'MultiChrono Export', text });
+  //   return;
+  // }
 
   // Fallback: copy to clipboard
-  if (navigator.clipboard) {
-    await navigator.clipboard.writeText(text);
-    alert('Results copied to clipboard!');
+ const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>MultiChrono Export</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 40px; color: #1c1c1e; }
+            h1 { font-size: 24px; margin-bottom: 20px; color: #007AFF; border-bottom: 2px solid #F2F2F7; padding-bottom: 10px; }
+            pre { font-family: ui-monospace, SFMono-Regular, SF Pro Text, monospace; font-size: 14px; line-height: 1.6; white-space: pre-wrap; background: #F2F2F7; padding: 20px; border-radius: 8px; }
+            @media print {
+              body { padding: 0; }
+              pre { background: none; padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>MultiChrono Report</h1>
+          <pre>${text}</pre>
+          <script>
+            // Automatically trigger the system print/PDF dialog, then close the tab
+            window.onload = function() {
+              window.print();
+              setTimeout(() => { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
     return;
   }
 
